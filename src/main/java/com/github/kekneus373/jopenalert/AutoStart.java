@@ -7,21 +7,21 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
 public final class AutoStart {
-    private static final String SHORTCUT_NAME = "jOpenAlert.lnk";
+    private static final String BATCH_SCRIPT = "Start-jOpenAlert.cmd";
 
     public void setEnabled(boolean enabled) throws IOException {
         Path startup = Path.of(System.getenv().getOrDefault("APPDATA", System.getProperty("user.home")))
                 .resolve("Microsoft").resolve("Windows").resolve("Start Menu").resolve("Programs")
                 .resolve("Startup");
-        Path target = startup.resolve(SHORTCUT_NAME);
+        Path target = startup.resolve(BATCH_SCRIPT);
         if (!enabled) {
             Files.deleteIfExists(target);
             return;
         }
         Files.createDirectories(startup);
-        try (InputStream input = AutoStart.class.getResourceAsStream("/assets/" + SHORTCUT_NAME)) {
+        try (InputStream input = AutoStart.class.getResourceAsStream("/assets/" + BATCH_SCRIPT)) {
             if (input == null) {
-                throw new IOException("Shortcut resource is missing");
+                throw new IOException("Batch script resource is missing");
             }
             Files.copy(input, target, StandardCopyOption.REPLACE_EXISTING);
         }

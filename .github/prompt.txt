@@ -1,0 +1,102 @@
+Build a Windows desktop application in Java 17+ (Maven project) that tracks air-raid
+alert status for Ukraine using the free, key-less JSON endpoint:
+
+  GET https://jaam.net.ua/alerts_statuses_v3.json
+  → returns { "states": { "<regionFriendlyName>": true|false, ... } }  (true = alert active)
+
+  GET https://ubilling.net.ua/aerialalerts/?map=rednight
+  → returns a PNG map of current alert state across regions.
+
+(If either URL is unreachable, fall back to making these base URLs configurable in a
+single constants class so I can swap endpoints without touching logic.)
+
+=====================================
+NON-NEGOTIABLE CONSTRAINTS
+=====================================
+- Keep the codebase small and readable: aim for <= 8 classes, no frameworks
+  (no Spring, no JavaFX, no Swing UI beyond SystemTray + one simple JFrame).
+- Use ONLY JDK built-ins: java.net.http.HttpClient, java.util.prefs OR plain file I/O,
+  javax.imageio.ImageIO, java.awt.SystemTray/TrayIcon/PopupMenu, javax.sound.sampled.Clip.
+- The app must run headless in the background: no main window on startup, no taskbar
+  button (set the tray-only JFrame's type/utility flag or keep it minimized & undecorated),
+  single-instance guard (throw/exiting if another instance holds a lock file).
+- All network calls off the EDT, on a single ScheduledExecutorService.
+
+=====================================
+TRAY MENU (exactly these items, this order)
+=====================================
+1. Region ▸           — submenu of all region names
+2. Auto-start   ☐     — toggle checkbox item
+3. Suspend      ☐     — toggle: pauses polling & sound while checked
+4. Show map           — opens/focuses the map window
+5. Exit               — clean shutdown (stop scheduler, close clips, remove tray icon)
+
+Menu labels update live (checkmarks reflect current config/state).
+
+=====================================
+BEHAVIOR SPEC
+=====================================
+A) FIRST LAUNCH / REGION PICKER
+   - On first run, fetch the region list from the API once to get human-readable
+	 names.
+   - No config file exists yet → show ONE modal dialog (top-most) listing regions,
+     user picks one, write it to %APPDATA%/jOpenAlert/config.properties
+     (keys: regionFriendlyName, autoStart, suspended, lastState). Then hide all windows.
+   - Subsequent launches read that file silently; never show a window unless asked.
+
+B) POLLING LOOP
+   - Every 20 seconds (fixed-rate schedule) GET alerts_statuses_v3.json, parse the chosen region's
+     boolean. Skip the tick entirely while "Suspend" is checked.
+   - Compare against the previous value held in memory; also persist lastState to config
+     so a restart doesn't replay sounds spuriously.
+   - Transitions:
+       false → true  : play src/main/res/assets/begin.wav
+       true  → false : play src/main/res/assets/end.wav
+       (no sound on startup regardless of initial value)
+   - Load both WAVs once at startup via AudioSystem.getClip(); play on a dedicated
+     thread so playback never blocks the poller or the EDT. Handle missing files by
+     logging a warning once, not crashing. Ignore non-PCM formats gracefully.
+   - Network errors: log, keep last known state, retry next tick. Back off to 60s after
+     3 consecutive failures, reset to 20s on success. Never let an exception kill the loop.
+
+C) AUTO-START TOGGLE
+   - Copy a preconfigured shortcut entry from src/main/res/assets/jOpenAlert.lnk to $APPDATA/Microsoft/Windows/Start Menu/Programs/Startup
+   - Toggle writes/removes that file AND updates the config flag. Write a tiny helper
+     class encapsulating this so it's easy to swap implementations.
+
+D) MAP WINDOW ("Show map")
+   - One reusable JFrame, always-on-top (setAlwaysOnTop(true)), resizable, title
+     "Ukraine Air Alerts", centered on first open.
+   - Shows the PNG from the map endpoint scaled to fit the pane (preserve aspect ratio).
+   - Refresh the image every 20s while the window is OPEN; stop refreshing when disposed
+     (dispose on close, don't quit the app). Debounce double-clicks on the menu item by
+     reusing/showing the existing frame instead of opening duplicates.
+   - Add a manual "Refresh" button and a label showing last-updated time.
+
+=====================================
+PROJECT LAYOUT
+=====================================
+src/main/java/com/github/kekneus373/jopenalert/
+  Main.java            // bootstrap, single-instance, tray install, shutdown hook
+  Config.java          // load/save %APPDATA% properties, defaults
+  AlertApi.java        // HttpClient wrapper: fetchStates(), fetchMapPng(), fetchRegions()
+  Poller.java          // ScheduledExecutorService, diff detection, backoff
+  SoundPlayer.java     // loads begin.wav/end.wav, async play
+  TrayManager.java     // builds PopupMenu, wires actions
+  MapWindow.java       // resizable always-on-top PNG viewer
+  AutoStart.java       // launcher toggle
+src/main/res/assets/{begin.wav,end.wav}
+pom.xml                // shade plugin → single runnable fat JAR, Main-Class set
+
+=====================================
+DELIVER IN THIS ORDER
+=====================================
+1. pom.xml (Java 17, maven-shade-plugin, no third-party deps).
+2. Each class above, complete and compiling — no "// TODO implement".
+3. A short README.md: how to build (mvn package), where assets go, how auto-start works,
+   how to change the API base URL, and a note that SystemTray requires a desktop session.
+
+Rules while writing code: prefer try-with-resources, use var where clear, no wildcard
+imports, handle InterruptedException correctly (restore interrupt flag), and make every
+user-visible string a constant so I can localize later. Flag any assumption you had to
+make about the API shape at the top of your reply as a bullet list before the code.

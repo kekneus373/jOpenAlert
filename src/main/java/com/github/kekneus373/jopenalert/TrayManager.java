@@ -6,15 +6,16 @@ import java.awt.MenuItem;
 import java.awt.PopupMenu;
 import java.awt.SystemTray;
 import java.awt.TrayIcon;
-import java.awt.image.BufferedImage;
+import java.awt.Image;
 import java.io.IOException;
-//import java.util.Map;
+import javax.imageio.ImageIO;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class TrayManager {
     private static final Logger LOG = Logger.getLogger(TrayManager.class.getName());
+    private static final String TRAY_ICON_FILENAME = "java.png";
     private final Config config;
     private final AutoStart autoStart;
     private final Poller poller;
@@ -33,7 +34,10 @@ public final class TrayManager {
         this.shutdown = shutdown;
         try {
             tray = SystemTray.getSystemTray();
-            icon = new TrayIcon(new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB), Config.APP_TITLE);
+            // Reads the image directly from the classpath/JAR resources
+            java.net.URL imgURL = TrayManager.class.getResource("/assets/" + TRAY_ICON_FILENAME);
+            Image img = ImageIO.read(imgURL);
+            icon = new TrayIcon(img, Config.APP_TITLE);
             icon.setImageAutoSize(true);
         } catch (Exception exception) {
             throw new IllegalStateException(Config.TRAY_UNAVAILABLE_MESSAGE, exception);
