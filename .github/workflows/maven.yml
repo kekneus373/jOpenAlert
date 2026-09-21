@@ -20,11 +20,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up JDK 26
-      uses: actions/setup-java@v4
+    - uses: actions/checkout@v7
+    - name: Set up Latest JDK
+      uses: actions/setup-java@v6
       with:
-        java-version: '26'
+        java-version: latest
         distribution: 'temurin'
         cache: maven
     - name: Build with Maven
