@@ -6,7 +6,7 @@
 
     <groupId>com.github.kekneus373</groupId>
     <artifactId>jOpenAlert</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.4</version>
 
     <properties>
         <maven.compiler.release>17</maven.compiler.release>

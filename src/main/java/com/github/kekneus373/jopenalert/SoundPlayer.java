@@ -2,6 +2,7 @@ package com.github.kekneus373.jopenalert;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.BufferedInputStream;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
@@ -56,7 +57,8 @@ public final class SoundPlayer implements AutoCloseable {
                 LOG.warning("Sound resource is missing: " + resource);
                 return null;
             }
-            try (AudioInputStream audio = AudioSystem.getAudioInputStream(input)) {
+            InputStream bufferedStream = new BufferedInputStream(input);
+            try (AudioInputStream audio = AudioSystem.getAudioInputStream(bufferedStream)) {
                 Clip clip = AudioSystem.getClip();
                 clip.open(audio);
                 return clip;

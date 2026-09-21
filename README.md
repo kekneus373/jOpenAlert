@@ -35,7 +35,7 @@ SystemTray requires a desktop session. The application intentionally has no star
 
 7. Done!
 
-> If you would like to choose another location for the program, change `INSTALL_PATH` variable in the batch script. As simple as that!
+> If you would like to choose another location for the program, change `INSTALL_PATH` variable in the batch script and move it to where you need to. As simple as that!
 
 ## License
 

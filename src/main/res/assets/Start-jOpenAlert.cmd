@@ -11,6 +11,12 @@ if not exist "%INSTALL_DIR%" (
     exit /b 1
 )
 
+if not exist javaw.exe (
+    echo Java executable not found in your PATH.
+    echo Please ensure Java is installed and added to PATH.
+    exit /b 2
+)
+
 :wait_for_network
 echo Checking for network connectivity...
 ping.exe -n 1 -w 1000 1.1.1.1 >nul
@@ -34,7 +40,7 @@ if not defined JAR_PATH (
 
 :launch
 echo Launching jOpenAlert...
-start "jOpenAlert" java -jar "!JAR_PATH!"
+start "" javaw.exe -jar "!JAR_PATH!"
 
 echo jOpenAlert launched successfully.
 exit /b 0

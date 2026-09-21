@@ -27,6 +27,7 @@ public final class Main {
     private static Poller poller;
     private static SoundPlayer sounds;
     private static ScheduledExecutorService scheduler;
+    private static boolean shutdownStarted;
 
     public static void main(String[] args) throws Exception {
         if (GraphicsEnvironment.isHeadless() || !SystemTray.isSupported()) {
@@ -76,13 +77,17 @@ public final class Main {
         return result == null ? null : result.toString();
     }
 
-    private static synchronized void shutdown(boolean exit) {
-        if (poller != null) poller.stop();
-        if (tray != null) tray.remove();
-        if (sounds != null) sounds.close();
-        if (scheduler != null) scheduler.shutdownNow();
-        try { if (lock != null) lock.release(); } catch (IOException exception) { LOG.log(Level.FINE, "Unable to release lock", exception); }
-        try { if (lockChannel != null) lockChannel.close(); } catch (IOException exception) { LOG.log(Level.FINE, "Unable to close lock", exception); }
+    private static void shutdown(boolean exit) {
+        synchronized (Main.class) {
+            if (shutdownStarted) return;
+            shutdownStarted = true;
+            if (poller != null) poller.stop();
+            if (tray != null) tray.remove();
+            if (sounds != null) sounds.close();
+            if (scheduler != null) scheduler.shutdownNow();
+            try { if (lock != null) lock.release(); } catch (IOException exception) { LOG.log(Level.FINE, "Unable to release lock", exception); }
+            try { if (lockChannel != null) lockChannel.close(); } catch (IOException exception) { LOG.log(Level.FINE, "Unable to close lock", exception); }
+        }
         if (exit) System.exit(0);
     }
 }
